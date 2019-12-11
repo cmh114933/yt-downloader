@@ -3,9 +3,14 @@
 let fs = require('fs')
 let querystring = require("querystring")
 let axios = require('axios')
+let readlineSync = require("readline-sync")
+
+// Obtain user input for video id and video name
+let video_id = readlineSync.question("Please key in video id")
+let video_name = readlineSync.question("Please key in video name")
 
 // Defining url variable
-let url = "https://youtube.com/get_video_info?video_id=<key_in_video_id>"
+let url = "https://youtube.com/get_video_info?video_id=" + video_id
 
 
 // Make request to youtube server for video information
