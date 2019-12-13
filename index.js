@@ -1,9 +1,19 @@
 
-// Library import
-let fs = require('fs')
+// Library imports
+// ----------------
+// Used to retrieve information from youtube
+let axios = require("axios")
+// Used to format data
 let querystring = require("querystring")
-let axios = require('axios')
+// Used to save video data to computer
+let file_system = require("fs")
 
+
+// Actual Code
+// ----------------
+
+// Step 1
+// ------
 // Defining url variable
 let url = "https://youtube.com/get_video_info?video_id=<key_in_video_id>"
 
@@ -12,36 +22,47 @@ let url = "https://youtube.com/get_video_info?video_id=<key_in_video_id>"
 axios.get(url)
 .then(
     (response) => {
-        const data = response.data
+        const dataStr = response.data
 
+        // Step 2
+        // ------
+        // Step 2.1
         // Convert video information from String to Object
-        let info = querystring.parse(data)
-        
+        let dataObj = querystring.parse(dataStr)
+
+        let vidFormatsStr = dataObj.url_encoded_fmt_stream_map
+
+        // Step 2.2
         // Retrieve video formats information and split to array of individual formats
-        let videoFormatStrings = info.url_encoded_fmt_stream_map.split(',')
-
+        let vidFormatsArr = vidFormatsStr.split(",")
+        
+        // Step 2.3
         // Select the video format with lowest quality (i.e, last in array)
-        let lowestQualityFormatString = videoFormatStrings[videoFormatStrings.length - 1]
-
+        let vidFormatStr = vidFormatsArr[vidFormatsArr.length - 1]
+        
         // Convert lowest quality format to Object
-        let format =  querystring.parse(lowestQualityFormatString);
+        let vidFormatObj =  querystring.parse(vidFormatStr);
 
+        // Extract video url
+        let vidUrl = vidFormatObj.url
+
+        // Step 3 & 4
+        // ----------
         // Obtain file type for video
-        let file_type = format.type.split("/")[1].split(";")[0]
+        let fileType = vidFormatObj.type.split("/")[1].split(";")[0]
 
         // Open file in preparation to save video data
-        fs.open("video."+ file_type,"w", (error, file_descriptor) => {
-
+        file_system.open("video."+ fileType,"w", (error, file_descriptor) => {
             // Make request to youtube server to get actual video data in chunks
             axios({
-                method: 'get',
-                url: format.url,
-                responseType: 'stream'
+                method: "get",
+                url: vidUrl,
+                responseType: "stream"
             })
             .then(function (response) {
                 // Save video data to file everytime we receive sufficient chunk of data
                 response.data.on("data", (data) => {
-                    fs.write(file_descriptor, data, () => {})
+                    file_system.write(file_descriptor, data, () => {})
                 })
             })
         })
