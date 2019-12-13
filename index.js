@@ -1,8 +1,8 @@
 
 // Library import
-let fs = require('fs')
+let axios = require("axios")
 let querystring = require("querystring")
-let axios = require('axios')
+let file_system = require("fs")
 let readlineSync = require("readline-sync")
 let progress = require("cli-progress")
 
@@ -13,32 +13,39 @@ let video_name = readlineSync.question("Please key in video name")
 // Defining url variable
 let url = "https://youtube.com/get_video_info?video_id=" + video_id
 
-
 // Make request to youtube server for video information
 axios.get(url)
 .then(
     (response) => {
-        const data = response.data
+        const dataStr = response.data
 
         // Convert video information from String to Object
-        let info = querystring.parse(data)
-        
-        // Retrieve video formats information and split to array of individual formats
-        let videoFormatStrings = info.url_encoded_fmt_stream_map.split(',')
+        let dataObj = querystring.parse(dataStr)
 
-        // Select the video format with lowest quality (i.e, last in array), and convert to Object
-        let format =  querystring.parse(videoFormatStrings[videoFormatStrings.length - 1]);
+        let vidFormatsStr = dataObj.url_encoded_fmt_stream_map
+
+        // Retrieve video formats information and split to array of individual formats
+        let vidFormatsArr = vidFormatsStr.split(",")
+        
+        // Select the video format with lowest quality (i.e, last in array)
+        let vidFormatStr = vidFormatsArr[vidFormatsArr.length - 1]
+        
+        // Convert lowest quality format to Object
+        let vidFormatObj =  querystring.parse(vidFormatStr);
+
+        // Extract video url
+        let vidUrl = vidFormatObj.url
 
         // Obtain file type for video
-        let file_type = /.+\/(.+);/.exec(format.type)[1] 
+        let fileType = vidFormatObj.type.split("/")[1].split(";")[0]
 
         // Open file in preparation to save video data
-        fs.open(video_name + "."+ file_type,"w", (error, file_descriptor) => {
+        file_system.open(video_name + "."+ fileType,"w", (error, file_descriptor) => {
             // Make request to youtube server to get actual video data in chunks
             axios({
-                method: 'get',
-                url: format.url,
-                responseType: 'stream'
+                method: "get",
+                url: vidUrl,
+                responseType: "stream"
             })
             .then(function (response) {
                 // Obtain total size of video data to download in bytes
@@ -66,7 +73,7 @@ axios.get(url)
                         bar.stop()
                     }
                     
-                    fs.write(file_descriptor, data, () => {})
+                    file_system.write(file_descriptor, data, () => {})
                 })
             })
         })
